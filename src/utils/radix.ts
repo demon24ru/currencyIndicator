@@ -1,14 +1,13 @@
 
-function radixSort(data) {
-    let lenStr = data[0].length;
+export function radixSort(data: string[]): void {
     let revers = true;
 
-    for (let iSt=lenStr-1; iSt >=0; iSt--) {
+    for (let iSt=data[0].length-1; iSt >=0; iSt--) {
         if (data[0][iSt] === '.')
             continue;
 
-        const bin = [[], [], [], [], [], [], [], [], [], []]; // Used to hold our array of queues
-        const digIndex = []; // This will be used to hold mapping values for remapping data elements to their proper index location
+        const bin: string[][] = [[], [], [], [], [], [], [], [], [], []]; // Used to hold our array of queues
+        const digIndex: number[] = []; // This will be used to hold mapping values for remapping data elements to their proper index location
         if (revers) {
             for (let i = 0; i < data.length; i++) {
                 bin[+data[i][iSt]].push(data[i]); // The first enqueue process is a forward sweep
@@ -32,13 +31,3 @@ function radixSort(data) {
         revers = false;
     }
 }
-
-
-const testA = [];
-for(let i = 0; i < 10000; i++){
-    testA[i] = ('000000' + (Math.random()*100000).toFixed(1)).slice(-7);
-}
-const st = new Date().getTime();
-radixSort(testA);
-const stp = new Date().getTime();
-console.log(testA, stp - st, 'ms');
