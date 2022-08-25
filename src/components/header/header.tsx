@@ -1,111 +1,61 @@
 import React from "react";
-import {Space, Select, DatePicker} from "antd";
+import {Space, Select, DatePicker, notification} from "antd";
 import store from "../../store/global";
+import {markets} from "./markets";
+import {level2, ordersbook, ticker, trade} from "../../api/clickHouse";
+import {Observer} from "cellx-react";
 
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
 
-const markets: string[] = [
-    'BTC-USDT',
-    'BTC3L-USDT',
-    'BTC3S-USDT',
-    'ETH-USDT',
-    'ETH3L-USDT',
-    'ETH3S-USDT',
-    'ADA-USDT',
-    'ADA3L-USDT',
-    'ADA3S-USDT',
-    'EOS-USDT',
-    'EOS3L-USDT',
-    'EOS3S-USDT',
-    'BCH-USDT',
-    'BCH3L-USDT',
-    'BCH3S-USDT',
-    'VET-USDT',
-    'VET3L-USDT',
-    'VET3S-USDT',
-    'LTC-USDT',
-    'LTC3L-USDT',
-    'LTC3S-USDT',
-    'XRP-USDT',
-    'XRP3L-USDT',
-    'XRP3S-USDT',
-    'LUNA-USDT',
-    'LUNA3L-USDT',
-    'LUNA3S-USDT',
-    'DOGE-USDT',
-    'DOGE3L-USDT',
-    'DOGE3S-USDT',
-    'SOL-USDT',
-    'SOL3L-USDT',
-    'SOL3S-USDT',
-    'LINK-USDT',
-    'LINK3L-USDT',
-    'LINK3S-USDT',
-    'DOT-USDT',
-    'DOT3L-USDT',
-    'DOT3S-USDT',
-    'ATOM-USDT',
-    'ATOM3L-USDT',
-    'ATOM3S-USDT',
-    'UNI-USDT',
-    'UNI3L-USDT',
-    'UNI3S-USDT',
-    'AXS-USDT',
-    'AXS3L-USDT',
-    'AXS3S-USDT',
-    'FTM-USDT',
-    'FTM3L-USDT',
-    'FTM3S-USDT',
-    'BNB-USDT',
-    'BNB3L-USDT',
-    'BNB3S-USDT',
-    'MATIC-USDT',
-    'MATIC3L-USDT',
-    'MATIC3S-USDT',
-    'SUSHI-USDT',
-    'SUSHI3L-USDT',
-    'SUSHI3S-USDT',
-    'NEAR-USDT',
-    'NEAR3L-USDT',
-    'NEAR3S-USDT',
-    'AAVE-USDT',
-    'AAVE3L-USDT',
-    'AAVE3S-USDT',
-    'SAND-USDT',
-    'SAND3L-USDT',
-    'SAND3S-USDT',
-    'AVAX-USDT',
-    'AVAX3L-USDT',
-    'AVAX3S-USDT',
-    'MANA-USDT',
-    'MANA3L-USDT',
-    'MANA3S-USDT',
-    'GALAX-USDT',
-    'GALAX3L-USDT',
-    'GALAX3S-USDT',
-    'KCS-USDT'
-];
-
+@Observer
 class Header extends React.Component<any, any>{
 
     handleSelectMarcket(v: string) {
         store.market = v;
+        this.loadData();
     }
 
-    handleChangeDateRange(date: string[]) {
-        store.dateStart = date[0];
-        store.dateStop = date[1];
+    handleChangeDateRange(date: any[]) {
+        if (date === null) {
+            store.dateStart = null;
+            store.dateStop = null;
+            return;
+        }
+        store.dateStart = date[0].format('YYYY-MM-DDTHH:mm:ss');
+        store.dateStop = date[1].format('YYYY-MM-DDTHH:mm:ss');
+        this.loadData();
+    }
+
+    async loadData() {
+        if (!store.market || !store.dateStart || !store.dateStop)
+            return;
+
+        store.globalLoading = true;
+        try {
+            await ordersbook();
+            await level2();
+            await ticker();
+            await trade();
+        } catch (e) {
+            notification.error({
+                // @ts-ignore
+                description: e.message,
+                message: 'Error!',
+            });
+        }
+        console.log(store.level2[0])
+        store.globalLoading = false;
     }
 
     render() {
         return (
             <Space className="app-header">
-                <Select defaultValue="ETH-USDT" onChange={(v)=>this.handleSelectMarcket(v)} style={{minWidth: 120}}>
+                <Select disabled={store.globalLoading} loading={store.globalLoading} defaultValue="ETH-USDT" onChange={(v)=>this.handleSelectMarcket(v)} style={{minWidth: 120}}>
                     { markets.map(m => (<Option key={m} value={m}>{m}</Option>)) }
                 </Select>
-                <RangePicker showTime onChange={(...arg)=>this.handleChangeDateRange(arg[1])} />
+                <RangePicker disabled={store.globalLoading} showTime onChange={(...arg)=>this.handleChangeDateRange(arg[0] as any[])} />
             </Space>
         );
     }

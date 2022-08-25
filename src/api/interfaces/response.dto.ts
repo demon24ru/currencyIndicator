@@ -1,6 +1,6 @@
 export interface ResponseDto {
     meta: object[];
-    data: string[][];
+    data: (string | number)[][];
     statistic: {
         elapsed: number,
         rows_read: number,
