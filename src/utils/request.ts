@@ -1,5 +1,6 @@
 import {extend, RequestOptionsInit} from 'umi-request';
 import { notification } from 'antd';
+import store from "../store/global";
 import config from '../config';
 
 const codeMessage: { [key: number]: string } = {
@@ -29,13 +30,13 @@ const errorHandler = (error: { data?: any; response?: { status?: number, statusT
     const { status } = response;
     if (response.status !== 401)
       notification.error({
-        message: `Ошибка ${status}:`,
+        message: `Error ${status}:`,
         description: error.data.message || errorText,
       });
   } else if (!response) {
     notification.error({
-      description: 'Нет подключения!',
-      message: 'Сетевая Ошибка',
+      message: 'Network error',
+      description: 'No connect!',
     });
     throw new Error();
   }
@@ -61,7 +62,7 @@ const req = function(quiet = false) {
   return extend({
     errorHandler: quiet ? errorHandlerQuiet : errorHandler,
     headers,
-    prefix: config.server
+    prefix: `http://${store.server}${config.serverSettings}`
   });
 }
 

@@ -1,7 +1,7 @@
 import React from "react";
-import {Space, Select, DatePicker, notification} from "antd";
+import {Space, Select, DatePicker, notification, Typography} from "antd";
 import store from "../../store/global";
-import {markets} from "./markets";
+import {markets} from "../../utils/markets";
 import {level2, ordersbook, ticker, trade} from "../../api/clickHouse";
 import {Observer} from "cellx-react";
 
@@ -11,6 +11,11 @@ const { RangePicker } = DatePicker;
 
 @Observer
 class Header extends React.Component<any, any>{
+
+    handleChangeServer(v: string) {
+        store.server = v;
+        this.loadData();
+    }
 
     handleSelectMarcket(v: string) {
         store.market = v;
@@ -41,17 +46,19 @@ class Header extends React.Component<any, any>{
         } catch (e) {
             notification.error({
                 // @ts-ignore
-                description: e.message,
+                description: e.message ? e.message : 'No Data.',
                 message: 'Error!',
             });
         }
-        console.log(store.level2[0])
         store.globalLoading = false;
     }
 
     render() {
         return (
             <Space className="app-header">
+                <Typography.Title editable={{ onChange: (v: string) => this.handleChangeServer(v) }} level={4} style={{ margin: 0 }}>
+                    {store.server}
+                </Typography.Title>
                 <Select disabled={store.globalLoading} loading={store.globalLoading} defaultValue="ETH-USDT" onChange={(v)=>this.handleSelectMarcket(v)} style={{minWidth: 120}}>
                     { markets.map(m => (<Option key={m} value={m}>{m}</Option>)) }
                 </Select>

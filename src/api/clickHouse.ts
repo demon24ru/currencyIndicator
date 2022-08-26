@@ -1,6 +1,6 @@
 import {request} from "../utils/request";
 import {ResponseDto} from "./interfaces/response.dto";
-import {dateToISOString} from "../utils/date";
+import {dateCompensationTimeZone, dateToISOString} from "../utils/date";
 import store from "../store/global";
 import {Level2Dto} from "./interfaces/level2.dto";
 import {TickerDto} from "./interfaces/ticker.dto";
@@ -17,6 +17,8 @@ export async function level2(): Promise<void> {
         data: `SELECT data, toDecimal64(timestamp, 9) FROM default.level2 WHERE 1=1 AND market = '${store.market}' AND timestamp >= '${dateToISOString(dateStart)}' AND timestamp <= '${store.dateStop}'\n` +
             `FORMAT JSONCompact`
     });
+    if (!data || !data.data.length)
+        throw new Error('Level2 No Data load!');
     try {
         for (let i=0; i<data.data.length; i++) {
             const dat: Level2Dto = JSON.parse(data.data[i][0] as string) as Level2Dto;
@@ -44,6 +46,9 @@ export async function ordersbook(): Promise<void> {
         data: `SELECT sequence, bids, asks, toDecimal64(timestamp, 3) FROM default.ordersbook WHERE 1=1 AND market = '${store.market}' AND timestamp >= '${dateToISOString(dateStart)}' AND timestamp <= '${dateToISOString(dateStop)}'\n` +
             `FORMAT JSONCompact`
     });
+
+    if (!data || !data.data.length)
+        throw new Error('Data not load!');
     let id: number = 0;
     for (let i=0; i<data.data.length; i++) {
         const v = (x: number) => Math.abs(((data.data[x][3] as number) * 1000) - (d.getTime() - (d.getTimezoneOffset() * 60 * 1000)));
@@ -51,7 +56,8 @@ export async function ordersbook(): Promise<void> {
     }
 
     store.ordersBook.sequence = Number(data.data[id][0]);
-    store.ordersBook.date = new Date(((data.data[id][3] as number)*1000) + (d.getTimezoneOffset() * 60 * 1000));
+    store.ordersBook.dateTimestamp = (data.data[id][3] as number)*1000;
+    store.ordersBook.date = new Date(dateCompensationTimeZone(store.ordersBook.dateTimestamp));
     try {
         const pars = (v: string): {[key: string]: number} => {
             const data: string[][] = JSON.parse(v) as string[][];
@@ -80,6 +86,8 @@ export async function ticker(): Promise<void> {
         data: `SELECT data, toDecimal64(timestamp, 3) FROM default.ticker WHERE 1=1 AND market = '${store.market}' AND timestamp >= '${dateToISOString(dateStart)}' AND timestamp <= '${store.dateStop}'\n` +
             `FORMAT JSONCompact`
     });
+    if (!data || !data.data.length)
+        throw new Error('Ticker No Data load!');
     try {
         for (let i=0; i<data.data.length; i++) {
             const dat: TickerDto = JSON.parse(data.data[i][0] as string) as TickerDto;
@@ -105,6 +113,8 @@ export async function trade(): Promise<void> {
         data: `SELECT data, toDecimal64(timestamp, 3) FROM default.trade WHERE 1=1 AND market = '${store.market}' AND timestamp >= '${dateToISOString(dateStart)}' AND timestamp <= '${store.dateStop}'\n` +
             `FORMAT JSONCompact`
     });
+    if (!data || !data.data.length)
+        throw new Error('Trade No Data load!');
     try {
         for (let i=0; i<data.data.length; i++) {
             const dat: TradeDto = JSON.parse(data.data[i][0] as string) as TradeDto;
