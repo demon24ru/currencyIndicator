@@ -5,6 +5,7 @@ import store from "../store/global";
 import {Level2Dto} from "./interfaces/level2.dto";
 import {TickerDto} from "./interfaces/ticker.dto";
 import {TradeDto} from "./interfaces/trade.dto";
+import {priceNormalize} from "../utils/price";
 
 
 export async function level2(): Promise<void> {
@@ -19,13 +20,19 @@ export async function level2(): Promise<void> {
     });
     if (!data || !data.data.length)
         throw new Error('Level2 No Data load!');
+
+    const normPr = (bidsAsks: string[][]) => {
+        for (let i=0; i<bidsAsks.length; i++)
+            bidsAsks[i][0] = priceNormalize(store.market!, bidsAsks[i][0])
+        return bidsAsks;
+    }
     try {
         for (let i=0; i<data.data.length; i++) {
             const dat: Level2Dto = JSON.parse(data.data[i][0] as string) as Level2Dto;
             if (dat.sequenceStart > store.ordersBook.sequence)
                 store.level2.push({
-                    asks: dat.changes.asks,
-                    bids: dat.changes.bids,
+                    asks: normPr(dat.changes.asks),
+                    bids: normPr(dat.changes.bids),
                     timestamp: Math.floor((data.data[i][1] as number)*1000)
                 });
         }
@@ -63,7 +70,7 @@ export async function ordersbook(): Promise<void> {
             const data: string[][] = JSON.parse(v) as string[][];
             const r: {[key: string]: number} = {};
             for (let d of data) {
-                r[d[0]] = Number(d[1]);
+                r[priceNormalize(store.market!, d[0])] = Number(d[1]);
             }
             return r;
         }
@@ -93,7 +100,7 @@ export async function ticker(): Promise<void> {
             const dat: TickerDto = JSON.parse(data.data[i][0] as string) as TickerDto;
             if (Number(dat.sequence) > store.ordersBook.sequence)
                 store.ticker.push({
-                    price: dat.price,
+                    price: priceNormalize(store.market!, dat.price),
                     timestamp: (data.data[i][1] as number)*1000
                 });
         }
@@ -121,7 +128,7 @@ export async function trade(): Promise<void> {
             if (Number(dat.sequence) > store.ordersBook.sequence)
                 store.trade.push({
                     side: dat.side,
-                    price: dat.price,
+                    price: priceNormalize(store.market!, dat.price),
                     size: Number(dat.size),
                     timestamp: (data.data[i][1] as number)*1000
                 });

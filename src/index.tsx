@@ -2,7 +2,6 @@ import 'matchmedia-polyfill';
 import 'matchmedia-polyfill/matchMedia.addListener';
 import 'react-app-polyfill/ie9';
 import 'react-app-polyfill/stable';
-import './midlwere/MathOps';
 // import React, { render } from 'preact/compat';
 import React from 'react';
 import ReactDOM from 'react-dom/client';

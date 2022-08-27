@@ -6,21 +6,31 @@ import {Observer} from "cellx-react";
 import store from "../../store/global";
 import {define} from "cellx";
 import {Level2} from "../../api/interfaces/level2.dto";
+import {priceNormalize} from "../../utils/price";
+import {dateCompensationTimeZone, dateToISOString} from "../../utils/date";
 
 
 const { Text } = Typography;
+
+interface mapData {
+    timestamp: string;
+    price: number;
+    count: number;
+}
 
 @Observer
 class HeatMap extends React.Component<any, any> {
 
     loading?: boolean;
-    mapAsks: object[] = [];
-    mapBids: object[] = [];
+    width: number = 32;
+    mapAsks: mapData[] = [];
+    mapBids: mapData[] = [];
     marketData?: string;
     dateStartData?: string;
     dateStopData?: string;
-    asks: {[key: string]: number} = {};
-    bids: {[key: string]: number} = {};
+    asks: {[price: string]: number} = {};
+    bids: {[price: string]: number} = {};
+    ticker: {[ts: number]: string} = {};
 
     constructor(props: any) {
         super(props);
@@ -41,10 +51,53 @@ class HeatMap extends React.Component<any, any> {
     }
 
     async calcData() {
+
+        const quantum: number = 100; // quantum from ms
+        const depthOB: number = 15/100; // depth Order book from % of current price
+
+
         this.loading = true;
 
         this.asks = _.clone(store.ordersBook.asks!);
         this.bids = _.clone(store.ordersBook.bids!);
+
+        for (let i=0; i<store.ticker.length; i++) {
+            this.ticker[Math.floor(store.ticker[i].timestamp/quantum)] = store.ticker[i].price;
+        }
+
+        const snapshotOB = (currentPrice: string, ts: number) => {
+            const asks: string[] = [];
+            const bibs: string[] = [];
+            const currentPriceStart: string = priceNormalize(store.market!, (Number(currentPrice) - (Number(currentPrice)*depthOB)).toString());
+            const currentPriceStop: string = priceNormalize(store.market!, (Number(currentPrice) + (Number(currentPrice)*depthOB)).toString());
+            let asksSize: number = 0;
+            for (let v of Object.keys(this.asks)) {
+                if (v > currentPriceStart && v < currentPriceStop) {
+                    asksSize += this.asks[v];
+                    asks.push(v);
+                }
+            }
+            let bidsSize: number = 0;
+            for (let v of Object.keys(this.bids)) {
+                if (v > currentPriceStart && v < currentPriceStop) {
+                    bidsSize += this.bids[v];
+                    bibs.push(v);
+                }
+            }
+            const timestamp: string = dateToISOString(new Date(dateCompensationTimeZone(ts * quantum))) + '.' + (ts%10).toString();
+            for (let v of asks)
+                this.mapAsks.push({
+                    timestamp,
+                    count: this.asks[v]/asksSize,
+                    price: (Number(v) - Number(currentPrice))/Number(currentPrice)
+                });
+            for (let v of bibs)
+                this.mapBids.push({
+                    timestamp,
+                    count: this.bids[v]/bidsSize,
+                    price: (Number(v) - Number(currentPrice))/Number(currentPrice)
+                });
+        }
 
         const calcOrderBook = (dat: Level2) => {
             for (let j=0; j<dat.bids.length; j++) {
@@ -63,18 +116,19 @@ class HeatMap extends React.Component<any, any> {
             }
         }
 
-        const quantum: number = 100; // quantum from ms
-
         let timestamp: number = store.ordersBook.dateTimestamp!;
+        let currentPrice: string = this.ticker[Math.floor(timestamp/quantum)];
         for (let i=0; i<store.level2.length; i++) {
             const dat: Level2 = store.level2[i];
             const tsQuantum: number = Math.floor(dat.timestamp/quantum);
             let ts: number = Math.floor(timestamp/quantum);
+            console.log(ts, tsQuantum, currentPrice)
             if (ts < tsQuantum)
                 while (!!(tsQuantum - ts)) {
-
+                    snapshotOB(currentPrice, ts);
                     timestamp += quantum;
                     ++ts;
+                    this.width += 5;
                 }
             calcOrderBook(dat);
         }
@@ -83,9 +137,11 @@ class HeatMap extends React.Component<any, any> {
     }
 
     render() {
-
+        // Asks - sell
+        // Bids - buy
+        console.log(this.width, this.mapAsks);
         const configAsks = {
-            width: window.innerWidth-32,
+            width: this.width,
             height: 500,
             autoFit: false,
             data: this.mapAsks,
@@ -101,7 +157,7 @@ class HeatMap extends React.Component<any, any> {
         };
 
         const configBids = {
-            width: window.innerWidth-32,
+            width: this.width,
             height: 500,
             autoFit: false,
             data: this.mapBids,
