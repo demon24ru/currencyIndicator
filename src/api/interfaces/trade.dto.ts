@@ -15,7 +15,7 @@ export interface TradeDto {
 
 export interface Trade {
     side: SideEnum;
-    price: string;
+    price: number;
     size: number;
     timestamp: number;
 }

@@ -11,10 +11,12 @@ class Global {
     market?: string;
     dateStart?: string | null;
     dateStop?: string | null;
+    quantum?: number = 100;
+    depthOB?: number = 0.06;
     ordersBook: {
         sequence?: number;
-        bids?: {[key: string]: number};
-        asks?: {[key: string]: number};
+        bids?: {[key: number]: number};
+        asks?: {[key: number]: number};
         date?: Date;
         dateTimestamp?: number;
     } = {};
@@ -29,6 +31,8 @@ class Global {
             market: 'ETH-USDT',
             dateStart: null,
             dateStop: null,
+            quantum: 100,
+            depthOB: 0.06,
         });
 
         // @ts-ignore

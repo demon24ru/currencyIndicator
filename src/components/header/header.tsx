@@ -1,5 +1,5 @@
 import React from "react";
-import {Space, Select, DatePicker, notification, Typography} from "antd";
+import {Space, Select, DatePicker, notification, Typography, InputNumber } from "antd";
 import store from "../../store/global";
 import {markets} from "../../utils/markets";
 import {level2, ordersbook, ticker, trade} from "../../api/clickHouse";
@@ -20,6 +20,14 @@ class Header extends React.Component<any, any>{
     handleSelectMarcket(v: string) {
         store.market = v;
         this.loadData();
+    }
+
+    handleChangeDepthOB(v: number) {
+        store.depthOB = v/100;
+    }
+
+    handleSelectQuantum(v: number) {
+        store.quantum = v;
     }
 
     handleChangeDateRange(date: any[]) {
@@ -63,6 +71,11 @@ class Header extends React.Component<any, any>{
                     { markets.map(m => (<Option key={m} value={m}>{m}</Option>)) }
                 </Select>
                 <RangePicker disabled={store.globalLoading} showTime onChange={(...arg)=>this.handleChangeDateRange(arg[0] as any[])} />
+                <InputNumber disabled={store.globalLoading} addonBefore="DepthOB" min={1} max={95} defaultValue={6} onChange={(v)=>this.handleChangeDepthOB(v)} />
+                <Select disabled={store.globalLoading} loading={store.globalLoading} defaultValue={100} onChange={(v)=>this.handleSelectQuantum(v)} style={{minWidth: 80}}>
+                    <Option value={100}>0.1 s</Option>
+                    <Option value={1000}>1 s</Option>
+                </Select>
             </Space>
         );
     }

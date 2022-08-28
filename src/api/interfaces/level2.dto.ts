@@ -9,7 +9,7 @@ export interface Level2Dto {
 }
 
 export interface Level2 {
-    asks: string[][];
-    bids: string[][];
+    asks: number[][];
+    bids: number[][];
     timestamp: number;
 }

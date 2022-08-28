@@ -10,6 +10,6 @@ export interface TickerDto {
 }
 
 export interface Ticker {
-    price: string;
+    price: number;
     timestamp: number;
 }

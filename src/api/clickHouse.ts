@@ -5,7 +5,6 @@ import store from "../store/global";
 import {Level2Dto} from "./interfaces/level2.dto";
 import {TickerDto} from "./interfaces/ticker.dto";
 import {TradeDto} from "./interfaces/trade.dto";
-import {priceNormalize} from "../utils/price";
 
 
 export async function level2(): Promise<void> {
@@ -21,9 +20,11 @@ export async function level2(): Promise<void> {
     if (!data || !data.data.length)
         throw new Error('Level2 No Data load!');
 
-    const normPr = (bidsAsks: string[][]) => {
-        for (let i=0; i<bidsAsks.length; i++)
-            bidsAsks[i][0] = priceNormalize(store.market!, bidsAsks[i][0])
+    const normPr = (bidsAsks: (string | number)[][]) => {
+        for (let i=0; i<bidsAsks.length; i++) {
+            bidsAsks[i][0] = Number(bidsAsks[i][0]) // price
+            bidsAsks[i][1] = Number(bidsAsks[i][1]) // size
+        }
         return bidsAsks;
     }
     try {
@@ -31,8 +32,8 @@ export async function level2(): Promise<void> {
             const dat: Level2Dto = JSON.parse(data.data[i][0] as string) as Level2Dto;
             if (dat.sequenceStart > store.ordersBook.sequence)
                 store.level2.push({
-                    asks: normPr(dat.changes.asks),
-                    bids: normPr(dat.changes.bids),
+                    asks: normPr(dat.changes.asks) as number[][],
+                    bids: normPr(dat.changes.bids) as number[][],
                     timestamp: Math.floor((data.data[i][1] as number)*1000)
                 });
         }
@@ -68,9 +69,11 @@ export async function ordersbook(): Promise<void> {
     try {
         const pars = (v: string): {[key: string]: number} => {
             const data: string[][] = JSON.parse(v) as string[][];
-            const r: {[key: string]: number} = {};
+            const r: {[key: number]: number} = {};
             for (let d of data) {
-                r[priceNormalize(store.market!, d[0])] = Number(d[1]);
+                if (d[0] === '0')
+                    continue;
+                r[Number(d[0])] = Number(d[1]);
             }
             return r;
         }
@@ -83,11 +86,11 @@ export async function ordersbook(): Promise<void> {
 
 }
 
-export async function ticker(): Promise<void> {
+export async function ticker(preLimit: number = 5): Promise<void> {
     if (!store.ordersBook.sequence)
         throw new Error('Order Book not load!');
     const dateStart: Date = new Date(store.ordersBook.date!);
-    dateStart.setTime(store.ordersBook.date!.getTime() - (5 * 1000));  // 5 seconds minus to compensate for recording delay
+    dateStart.setTime(store.ordersBook.date!.getTime() - (preLimit * 1000));  // 5 seconds minus to compensate for recording delay
     const data: ResponseDto = await request<ResponseDto>('', {
         method: 'post',
         data: `SELECT data, toDecimal64(timestamp, 3) FROM default.ticker WHERE 1=1 AND market = '${store.market}' AND timestamp >= '${dateToISOString(dateStart)}' AND timestamp <= '${store.dateStop}'\n` +
@@ -98,11 +101,24 @@ export async function ticker(): Promise<void> {
     try {
         for (let i=0; i<data.data.length; i++) {
             const dat: TickerDto = JSON.parse(data.data[i][0] as string) as TickerDto;
-            if (Number(dat.sequence) > store.ordersBook.sequence)
+            if (Number(dat.sequence) > store.ordersBook.sequence) {
+                if (Math.floor(store.ordersBook.dateTimestamp!/100) < Math.floor((data.data[i][1] as number) * 10)) {
+                    if (i === 0)
+                        return await ticker(preLimit + preLimit);
+                    if (i > 0 && store.ticker.length == 0) {
+                        const preDat: TickerDto = JSON.parse(data.data[i-1][0] as string) as TickerDto;
+                        console.log('price', preDat.price, store.ordersBook.dateTimestamp!, (data.data[i][1] as number) * 1000);
+                        store.ticker.push({
+                            price: Number(preDat.price),
+                            timestamp: store.ordersBook.dateTimestamp!
+                        });
+                    }
+                }
                 store.ticker.push({
-                    price: priceNormalize(store.market!, dat.price),
-                    timestamp: (data.data[i][1] as number)*1000
+                    price: Number(dat.price),
+                    timestamp: (data.data[i][1] as number) * 1000
                 });
+            }
         }
     } catch (e) {
         store.ticker = [];
@@ -128,7 +144,7 @@ export async function trade(): Promise<void> {
             if (Number(dat.sequence) > store.ordersBook.sequence)
                 store.trade.push({
                     side: dat.side,
-                    price: priceNormalize(store.market!, dat.price),
+                    price: Number(dat.price),
                     size: Number(dat.size),
                     timestamp: (data.data[i][1] as number)*1000
                 });
