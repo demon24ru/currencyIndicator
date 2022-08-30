@@ -8,8 +8,3 @@ export interface TickerDto {
     bestBid: string;
     bestBidSize: string;
 }
-
-export interface Ticker {
-    price: number;
-    timestamp: number;
-}

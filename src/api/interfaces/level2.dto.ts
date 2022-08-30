@@ -7,9 +7,3 @@ export interface Level2Dto {
     };
     sequenceEnd: number;
 }
-
-export interface Level2 {
-    asks: number[][];
-    bids: number[][];
-    timestamp: number;
-}

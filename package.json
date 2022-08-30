@@ -11,7 +11,9 @@
     "react": "^18.2.0",
     "react-app-polyfill": "^3.0.0",
     "react-dom": "^18.2.0",
-    "umi-request": "^1.3.5"
+    "umi-request": "^1.3.5",
+    "konva": "^8.3.11",
+    "react-konva": "^18.2.1"
   },
   "devDependencies": {
     "@craco/craco": "^6.4.5",

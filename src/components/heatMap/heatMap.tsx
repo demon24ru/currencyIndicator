@@ -1,43 +1,45 @@
 import React from "react";
 import _ from "lodash";
 import {Space, Typography} from "antd";
-import { Heatmap } from '@ant-design/plots';
+import Konva from 'konva';
+import {Layer, Rect, Stage, Text as TextKonva} from "react-konva";
 import {Observer} from "cellx-react";
 import store from "../../store/global";
 import {define} from "cellx";
-import {Level2} from "../../api/interfaces/level2.dto";
 import {dateCompensationTimeZone, dateToISOString} from "../../utils/date";
+import {Level2} from "../../utils/interfaces/level2.dto";
 
 
 const { Text } = Typography;
 
-interface mapData {
-    timestamp: string;
-    price: number;
-    size: number;
-}
-
 @Observer
 class HeatMap extends React.Component<any, any> {
 
+    countPixels: number = 3;   // number of pixels in one indicator
+    yHeightMetric: number = 10;
+
+
+    layerAsksRef: any;
+    layerBidsRef: any;
     loading?: boolean;
-    width: number = 32;
-    mapAsks: mapData[] = [];
-    mapBids: mapData[] = [];
     marketData?: string;
     dateStartData?: string;
     dateStopData?: string;
     quantumData: number = 100;
-    depthOBData: number = 0.15;
+    depthOBData: number = 0.0015;
     asks: {[price: number]: number} = {};
     bids: {[price: number]: number} = {};
     ticker: {[ts: number]: number} = {};
+    heightCanvas: number = 20;
+    yLevels: number = 100;
 
     constructor(props: any) {
         super(props);
         define(this, {
             loading: false,
         });
+        this.layerAsksRef = React.createRef();
+        this.layerBidsRef = React.createRef();
     }
 
     componentDidUpdate(prevProps: Readonly<any>, prevState: Readonly<any>, snapshot?: any) {
@@ -45,65 +47,99 @@ class HeatMap extends React.Component<any, any> {
         && (this.marketData !== store.market
                 || this.dateStartData !== store.dateStart
                 || this.dateStopData !== store.dateStop
-                || this.quantumData !== store.quantum
                 || this.depthOBData !== store.depthOB)) {
             this.marketData = store.market;
             this.dateStartData = store.dateStart!;
             this.dateStopData = store.dateStop!;
             this.depthOBData = store.depthOB!;
-            this.quantumData = store.quantum!;
-            this.mapAsks = [];
-            this.mapBids = [];
+            this.asks = {};
+            this.bids = {};
+            this.ticker = {};
 
-            console.log('data reload')
-            this.calcData();
+            console.log('data reload');
+            setTimeout(()=>this.calcData(), 2000);
         }
     }
 
-    async calcData() {
-         this.loading = true;
+    preCalcData() {
+        this.yLevels = Math.floor((150 + store.depthOB!*100000)/this.countPixels);
+        this.heightCanvas = (this.yLevels*(this.countPixels+1)) + this.yHeightMetric;
+
+        this.quantumData = store.quantum!;
+    }
+
+    calcData() {
 
         this.asks = _.clone(store.ordersBook.asks!);
         this.bids = _.clone(store.ordersBook.bids!);
 
         for (let i=0; i<store.ticker.length; i++) {
-            this.ticker[Math.floor(store.ticker[i].timestamp/this.quantumData)] = store.ticker[i].price;
+            this.ticker[(this.quantumData > 100 ? Math.floor((store.ticker[i].timestamp * 100) / this.quantumData) : store.ticker[i].timestamp)] = store.ticker[i].price;
         }
 
         const snapshotOB = (currentPrice: number, ts: number) => {
-            const asks: number[] = [];
-            const bibs: number[] = [];
+            console.log(currentPrice);
+            const asks: {[price: number]: number} = {};
+            const bids: {[price: number]: number} = {};
             const currentPriceStart: number = currentPrice - (currentPrice*this.depthOBData);
             const currentPriceStop: number = currentPrice + (currentPrice*this.depthOBData);
             let asksSize: number = 0;
             for (let v of Object.keys(this.asks)) {
-                // if (Number(v) > currentPriceStart && Number(v) < currentPriceStop) {
-                if (Number(v) <= currentPrice) {
-                    asksSize += this.asks[Number(v)];
-                    asks.push(Number(v));
+                if (Number(v) < currentPriceStop) {
+                // if (Number(v) <= currentPrice) {
+                    const prLevel: number = Math.abs(Math.round((((Number(v) - currentPrice)/currentPrice)*100000)/this.countPixels) - Math.floor((store.depthOB!*100000)/this.countPixels));
+                    let count: number = 0;
+                    if (prLevel >= this.yLevels) {
+                        asks[this.yLevels - 1] = (asks[this.yLevels - 1] || 0) + this.asks[Number(v)];
+                        count = asks[this.yLevels - 1];
+                    } else {
+                            asks[prLevel] = (asks[prLevel] || 0) + this.asks[Number(v)];
+                            count = asks[prLevel];
+                    }
+                    if (asksSize < count)
+                        asksSize = count;
                 }
             }
             let bidsSize: number = 0;
             for (let v of Object.keys(this.bids)) {
-                // if (Number(v) > currentPriceStart && Number(v) < currentPriceStop) {
-                if (Number(v) >= currentPrice) {
-                    bidsSize += this.bids[Number(v)];
-                    bibs.push(Number(v));
+                if (Number(v) > currentPriceStart) {
+                // if (Number(v) >= currentPrice) {
+                    const prLevel: number = Math.round((((Number(v) - currentPrice)/currentPrice)*100000)/this.countPixels) - Math.floor(150/this.countPixels);
+                    let count: number = 0;
+                    if (prLevel > 0) {
+                        bids[0] = (bids[0] || 0) + this.bids[Number(v)];
+                        count = bids[0];
+                    } else {
+                            bids[Math.abs(prLevel)] = (bids[Math.abs(prLevel)] || 0) + this.bids[Number(v)];
+                            count = bids[Math.abs(prLevel)];
+                    }
+                    if (bidsSize < count)
+                        bidsSize = count;
                 }
             }
-            const timestamp: string = dateToISOString(new Date(dateCompensationTimeZone(ts * this.quantumData))) + (store.quantum === 100 ? '.' + (ts%10).toString() : '');
-            for (let v of asks)
-                this.mapAsks.push({
-                    timestamp,
-                    size: this.asks[v]/(asksSize),
-                    price: (v - currentPrice)/currentPrice
-                });
-            for (let v of bibs)
-                this.mapBids.push({
-                    timestamp,
-                    size: this.bids[v]/(bidsSize),
-                    price: (v - currentPrice)/currentPrice
-                });
+
+            const layerAsks = this.layerAsksRef.current;
+            for (let v in asks) { // @ts-ignore
+                layerAsks.add(new Konva.Rect({
+                    x: (10 + (ts*(this.countPixels+1))),
+                    y: (this.yHeightMetric + (Number(v)*(this.countPixels+1))),
+                    width: this.countPixels,
+                    height: this.countPixels,
+                    fill: 'red',
+                    opacity: Math.round((asks[v]/asksSize)*100)/100
+                }));
+            }
+            const layerBids = this.layerBidsRef.current;
+            for (let v in bids) { // @ts-ignore
+                layerBids.add(new Konva.Rect({
+                    x: (10 + (ts*(this.countPixels+1))),
+                    y: (this.yHeightMetric + (Number(v)*(this.countPixels+1))),
+                    width: this.countPixels,
+                    height: this.countPixels,
+                    fill: 'blue',
+                    opacity: Math.round((bids[v]/bidsSize)*100)/100
+                }));
+            }
         }
 
         const calcOrderBook = (dat: Level2) => {
@@ -123,74 +159,56 @@ class HeatMap extends React.Component<any, any> {
             }
         }
 
-        let timestamp: number = store.ordersBook.dateTimestamp!;
-        let currentPrice: number = this.ticker[Math.floor(timestamp/this.quantumData)];
+        let timestamp: number = Math.floor(store.ordersBook.dateTimestamp! / this.quantumData);
+        let currentPrice: number = this.ticker[timestamp];
         console.log('currentPrice', currentPrice);
         for (let i=0; i<store.level2.length; i++) {
             const dat: Level2 = store.level2[i];
             const tsQuantum: number = Math.floor(dat.timestamp/this.quantumData);
-            let ts: number = Math.floor(timestamp/this.quantumData);
-            if (ts < tsQuantum)
-                while (!!(tsQuantum - ts)) {
-                    snapshotOB(currentPrice, ts);
-                    timestamp += this.quantumData;
-                    ++ts;
-                    this.width += 10;
-                    if (this.ticker[Math.floor(timestamp/this.quantumData)])
-                        currentPrice = this.ticker[Math.floor(timestamp/this.quantumData)];
+            if (timestamp < tsQuantum)
+                while (!!(tsQuantum - timestamp)) {
+                    snapshotOB(currentPrice, timestamp - Math.floor(store.ordersBook.dateTimestamp!/this.quantumData));
+                    ++timestamp;
+                    if (this.ticker[timestamp])
+                        currentPrice = this.ticker[timestamp];
                 }
             calcOrderBook(dat);
         }
-
-        this.loading = false;
     }
 
     render() {
         // Asks - sell
         // Bids - buy
-        console.log(this.width, this.mapBids, store.quantum, store.depthOB);
+        this.preCalcData();
 
-        const configAsks = {
-            width: 1500,
-            height: 500,
-            autoFit: false,
-            data: this.mapAsks,
-            xField: 'timestamp',
-            yField: 'price',
-            colorField: 'size',
-            // @ts-ignore
-            color: ({ size }) => {
-                if (size > 1)
-                    return '#ff0000';
-                return '#ff0000' + Math.round(size*255).toString(16).toUpperCase().padStart(2, '0')
-            },
-            meta: {
-                'price': {
-                    type: 'cat',
-                },
-            },
-        };
-
-        const configBids = {
-            width: 1500,
-            height: 500,
-            autoFit: false,
-            data: this.mapBids,
-            xField: 'timestamp',
-            yField: 'price',
-            colorField: 'size',
-            // @ts-ignore
-            color: ({ size }) => {
-                if (size > 1)
-                    return '#0048ff';
-                return '#0048ff' + Math.round(size*255).toString(16).toUpperCase().padStart(2, '0')
-            },
-            meta: {
-                'price': {
-                    type: 'cat',
-                },
-            },
-        };
+        const xAxisLabelContent = () => {
+            console.log(store.width, store.quantum, store.depthOB);
+            const ret: any[] = [];
+            for (let i=0; i< Math.floor((store.width-10)/(this.countPixels+1)); i++) {
+                if ((i/50)%1 === 0) {
+                    ret.push(
+                        <Rect
+                            key={`${i}rect`}
+                            x={(10 + (i*(this.countPixels+1)))}
+                            y={0}
+                            width={1}
+                            height={this.heightCanvas}
+                            fill={'black'}
+                            opacity={0.05}
+                        />
+                    );
+                    ret.push(
+                        <TextKonva
+                            key={`${i}text`}
+                            text={dateToISOString(new Date(dateCompensationTimeZone((Math.floor(store.ordersBook.dateTimestamp! / this.quantumData) + i)* this.quantumData))) + (store.quantum === 100 ? '.' + ((Math.floor(store.ordersBook.dateTimestamp! / this.quantumData) + i)%10).toString() : '')}
+                            x={(12 + (i*(this.countPixels+1)))}
+                            y={0}
+                        />
+                    );
+                }
+            }
+            return ret;
+        }
 
         if (!store.dateStart || !store.dateStop)
             return (<div className="app-container">
@@ -208,10 +226,68 @@ class HeatMap extends React.Component<any, any> {
         return (
             <div className="app-container">
                 <Space direction="vertical">
-                    {/* @ts-ignore */}
-                    <Heatmap {...configAsks} />
-                    {/* @ts-ignore */}
-                    <Heatmap {...configBids} />
+                    <Stage width={store.width} height={this.heightCanvas}>
+                        <Layer ref={this.layerAsksRef}>
+                            { /* Metrics */ }
+                            <Rect
+                                x={0}
+                                y={this.yHeightMetric-1}
+                                width={store.width}
+                                height={1}
+                                fill={'black'}
+                                opacity={0.48}
+                            />
+                            {/*<Rect*/}
+                            {/*    x={9}*/}
+                            {/*    y={0}*/}
+                            {/*    width={1}*/}
+                            {/*    height={this.heightCanvas}*/}
+                            {/*    fill={'black'}*/}
+                            {/*    opacity={0.48}*/}
+                            {/*/>*/}
+                            { /* Zero level */ }
+                            <Rect
+                                x={5}
+                                y={((this.yLevels-Math.floor(150/this.countPixels))*(this.countPixels+1))-1 + this.yHeightMetric}
+                                width={store.width-5}
+                                height={5}
+                                fill={'black'}
+                                opacity={0.05}
+                            />
+                            { xAxisLabelContent() }
+                        </Layer>
+                    </Stage>
+                    <Stage width={store.width} height={this.heightCanvas}>
+                        <Layer ref={this.layerBidsRef}>
+                            { /* Metrics */ }
+                            <Rect
+                                x={0}
+                                y={this.yHeightMetric-1}
+                                width={store.width}
+                                height={1}
+                                fill={'black'}
+                                opacity={0.48}
+                            />
+                            {/*<Rect*/}
+                            {/*    x={9}*/}
+                            {/*    y={0}*/}
+                            {/*    width={1}*/}
+                            {/*    height={this.heightCanvas}*/}
+                            {/*    fill={'black'}*/}
+                            {/*    opacity={0.48}*/}
+                            {/*/>*/}
+                            { /* Zero level */ }
+                            <Rect
+                                x={5}
+                                y={((this.yLevels-Math.floor((store.depthOB!*100000)/this.countPixels))*(this.countPixels+1))-1 + this.yHeightMetric}
+                                width={store.width-5}
+                                height={5}
+                                fill={'black'}
+                                opacity={0.05}
+                            />
+                            { xAxisLabelContent() }
+                        </Layer>
+                    </Stage>
                 </Space>
             </div>
         );

@@ -12,10 +12,3 @@ export interface TradeDto {
     makerOrderId: string;
     time: string;
 }
-
-export interface Trade {
-    side: SideEnum;
-    price: number;
-    size: number;
-    timestamp: number;
-}

@@ -79,6 +79,8 @@ export async function ordersbook(): Promise<void> {
         }
         store.ordersBook.bids = pars(data.data[id][1] as string);
         store.ordersBook.asks = pars(data.data[id][2] as string);
+
+        store.width = 10 + Math.floor(((new Date(store.dateStop!).getTime() - (d.getTimezoneOffset() * 60 * 1000) - store.ordersBook.dateTimestamp)/store.quantum!)*4);
     } catch (e) {
         store.ordersBook = {};
         throw new Error('Orders Book error parse');
@@ -99,6 +101,8 @@ export async function ticker(preLimit: number = 5): Promise<void> {
     if (!data || !data.data.length)
         throw new Error('Ticker No Data load!');
     try {
+        let price: number = 0;
+        let timestamp: number = 0;
         for (let i=0; i<data.data.length; i++) {
             const dat: TickerDto = JSON.parse(data.data[i][0] as string) as TickerDto;
             if (Number(dat.sequence) > store.ordersBook.sequence) {
@@ -106,17 +110,21 @@ export async function ticker(preLimit: number = 5): Promise<void> {
                     if (i === 0)
                         return await ticker(preLimit + preLimit);
                     if (i > 0 && store.ticker.length == 0) {
-                        const preDat: TickerDto = JSON.parse(data.data[i-1][0] as string) as TickerDto;
-                        console.log('price', preDat.price, store.ordersBook.dateTimestamp!, (data.data[i][1] as number) * 1000);
+                        const preDat: TickerDto = JSON.parse(data.data[i - 1][0] as string) as TickerDto;
+                        price = Number(preDat.price);
+                        timestamp = Math.floor(store.ordersBook.dateTimestamp! / 100);
+                        console.log('price', price, timestamp);
                         store.ticker.push({
-                            price: Number(preDat.price),
-                            timestamp: store.ordersBook.dateTimestamp!
+                            price,
+                            timestamp
                         });
                     }
                 }
+                price = Number(dat.price);
+                timestamp = Math.floor((data.data[i][1] as number) * 10);
                 store.ticker.push({
-                    price: Number(dat.price),
-                    timestamp: (data.data[i][1] as number) * 1000
+                    price,
+                    timestamp
                 });
             }
         }
