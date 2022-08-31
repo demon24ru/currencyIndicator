@@ -14,7 +14,7 @@ export async function level2(): Promise<void> {
     dateStart.setTime(store.ordersBook.date!.getTime() - (5 * 1000));  // 5 seconds minus to compensate for recording delay
     const data: ResponseDto = await request<ResponseDto>('', {
         method: 'post',
-        data: `SELECT data, toDecimal64(timestamp, 9) FROM default.level2 WHERE 1=1 AND market = '${store.market}' AND timestamp >= '${dateToISOString(dateStart)}' AND timestamp <= '${store.dateStop}'\n` +
+        data: `SELECT data, toDecimal64(timestamp, 9) FROM default.level2 WHERE 1=1 AND market = '${store.market}' AND timestamp >= '${dateToISOString(dateStart)}' AND timestamp <= '${store.dateStop}' ORDER BY timestamp ASC\n` +
             `FORMAT JSONCompact`
     });
     if (!data || !data.data.length)
@@ -95,7 +95,7 @@ export async function ticker(preLimit: number = 5): Promise<void> {
     dateStart.setTime(store.ordersBook.date!.getTime() - (preLimit * 1000));  // 5 seconds minus to compensate for recording delay
     const data: ResponseDto = await request<ResponseDto>('', {
         method: 'post',
-        data: `SELECT data, toDecimal64(timestamp, 3) FROM default.ticker WHERE 1=1 AND market = '${store.market}' AND timestamp >= '${dateToISOString(dateStart)}' AND timestamp <= '${store.dateStop}'\n` +
+        data: `SELECT data, toDecimal64(timestamp, 3) FROM default.ticker WHERE 1=1 AND market = '${store.market}' AND timestamp >= '${dateToISOString(dateStart)}' AND timestamp <= '${store.dateStop}' ORDER BY timestamp ASC\n` +
             `FORMAT JSONCompact`
     });
     if (!data || !data.data.length)
@@ -141,7 +141,7 @@ export async function trade(): Promise<void> {
     dateStart.setTime(store.ordersBook.date!.getTime() - (5 * 1000));  // 5 seconds minus to compensate for recording delay
     const data: ResponseDto = await request<ResponseDto>('', {
         method: 'post',
-        data: `SELECT data, toDecimal64(timestamp, 3) FROM default.trade WHERE 1=1 AND market = '${store.market}' AND timestamp >= '${dateToISOString(dateStart)}' AND timestamp <= '${store.dateStop}'\n` +
+        data: `SELECT data, toDecimal64(timestamp, 3) FROM default.trade WHERE 1=1 AND market = '${store.market}' AND timestamp >= '${dateToISOString(dateStart)}' AND timestamp <= '${store.dateStop}' ORDER BY timestamp ASC\n` +
             `FORMAT JSONCompact`
     });
     if (!data || !data.data.length)

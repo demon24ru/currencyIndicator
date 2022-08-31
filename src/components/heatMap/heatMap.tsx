@@ -29,6 +29,8 @@ class HeatMap extends React.Component<any, any> {
     depthOBData: number = 0.0015;
     asks: {[price: number]: number} = {};
     bids: {[price: number]: number} = {};
+    delAsks: {[price: number]: number} = {};
+    delBids: {[price: number]: number} = {};
     ticker: {[ts: number]: number} = {};
     heightCanvas: number = 20;
     yLevels: number = 100;
@@ -54,6 +56,8 @@ class HeatMap extends React.Component<any, any> {
             this.depthOBData = store.depthOB!;
             this.asks = {};
             this.bids = {};
+            this.delAsks = {};
+            this.delBids = {};
             this.ticker = {};
 
             console.log('data reload');
@@ -78,12 +82,14 @@ class HeatMap extends React.Component<any, any> {
         }
 
         const snapshotOB = (currentPrice: number, ts: number) => {
-            console.log(currentPrice);
+            // console.log(currentPrice);
             const asks: {[price: number]: number} = {};
             const bids: {[price: number]: number} = {};
+            const delAsks: {[price: number]: number} = {};
+            const delBids: {[price: number]: number} = {};
             const currentPriceStart: number = currentPrice - (currentPrice*this.depthOBData);
             const currentPriceStop: number = currentPrice + (currentPrice*this.depthOBData);
-            let asksSize: number = 0;
+            let maxSize: number = 0;
             for (let v of Object.keys(this.asks)) {
                 if (Number(v) < currentPriceStop) {
                 // if (Number(v) <= currentPrice) {
@@ -96,11 +102,11 @@ class HeatMap extends React.Component<any, any> {
                             asks[prLevel] = (asks[prLevel] || 0) + this.asks[Number(v)];
                             count = asks[prLevel];
                     }
-                    if (asksSize < count)
-                        asksSize = count;
+                    if (maxSize < count)
+                        maxSize = count;
                 }
             }
-            let bidsSize: number = 0;
+
             for (let v of Object.keys(this.bids)) {
                 if (Number(v) > currentPriceStart) {
                 // if (Number(v) >= currentPrice) {
@@ -113,8 +119,42 @@ class HeatMap extends React.Component<any, any> {
                             bids[Math.abs(prLevel)] = (bids[Math.abs(prLevel)] || 0) + this.bids[Number(v)];
                             count = bids[Math.abs(prLevel)];
                     }
-                    if (bidsSize < count)
-                        bidsSize = count;
+                    if (maxSize < count)
+                        maxSize = count;
+                }
+            }
+
+            for (let v of Object.keys(this.delAsks)) {
+                if (Number(v) < currentPriceStop) {
+                    // if (Number(v) <= currentPrice) {
+                    const prLevel: number = Math.abs(Math.round((((Number(v) - currentPrice)/currentPrice)*100000)/this.countPixels) - Math.floor((store.depthOB!*100000)/this.countPixels));
+                    let count: number = 0;
+                    if (prLevel >= this.yLevels) {
+                        delAsks[this.yLevels - 1] = (delAsks[this.yLevels - 1] || 0) + this.delAsks[Number(v)];
+                        count = delAsks[this.yLevels - 1];
+                    } else {
+                        delAsks[prLevel] = (delAsks[prLevel] || 0) + this.delAsks[Number(v)];
+                        count = delAsks[prLevel];
+                    }
+                    if (maxSize < count)
+                        maxSize = count;
+                }
+            }
+
+            for (let v of Object.keys(this.delBids)) {
+                if (Number(v) > currentPriceStart) {
+                    // if (Number(v) >= currentPrice) {
+                    const prLevel: number = Math.round((((Number(v) - currentPrice)/currentPrice)*100000)/this.countPixels) - Math.floor(150/this.countPixels);
+                    let count: number = 0;
+                    if (prLevel > 0) {
+                        delBids[0] = (delBids[0] || 0) + this.delBids[Number(v)];
+                        count = delBids[0];
+                    } else {
+                        delBids[Math.abs(prLevel)] = (delBids[Math.abs(prLevel)] || 0) + this.delBids[Number(v)];
+                        count = delBids[Math.abs(prLevel)];
+                    }
+                    if (maxSize < count)
+                        maxSize = count;
                 }
             }
 
@@ -126,7 +166,17 @@ class HeatMap extends React.Component<any, any> {
                     width: this.countPixels,
                     height: this.countPixels,
                     fill: 'red',
-                    opacity: Math.round((asks[v]/asksSize)*100)/100
+                    opacity: Math.round((asks[v]/maxSize)*100)/100
+                }));
+            }
+            for (let v in delAsks) { // @ts-ignore
+                layerAsks.add(new Konva.Rect({
+                    x: (10 + (ts*(this.countPixels+1))),
+                    y: (this.yHeightMetric + (Number(v)*(this.countPixels+1))),
+                    width: this.countPixels,
+                    height: this.countPixels,
+                    fill: 'black',
+                    opacity: Math.round((delAsks[v]/maxSize)*100)/100
                 }));
             }
             const layerBids = this.layerBidsRef.current;
@@ -136,15 +186,29 @@ class HeatMap extends React.Component<any, any> {
                     y: (this.yHeightMetric + (Number(v)*(this.countPixels+1))),
                     width: this.countPixels,
                     height: this.countPixels,
-                    fill: 'blue',
-                    opacity: Math.round((bids[v]/bidsSize)*100)/100
+                    fill: 'green',
+                    opacity: Math.round((bids[v]/maxSize)*100)/100
                 }));
             }
+            for (let v in delBids) { // @ts-ignore
+                layerBids.add(new Konva.Rect({
+                    x: (10 + (ts*(this.countPixels+1))),
+                    y: (this.yHeightMetric + (Number(v)*(this.countPixels+1))),
+                    width: this.countPixels,
+                    height: this.countPixels,
+                    fill: 'black',
+                    opacity: Math.round((delBids[v]/maxSize)*100)/100
+                }));
+            }
+
+            this.delAsks = {};
+            this.delBids = {};
         }
 
         const calcOrderBook = (dat: Level2) => {
             for (let j=0; j<dat.bids.length; j++) {
                 if (dat.bids[j][1] === 0) {
+                    this.delBids[dat.bids[j][0]] = this.bids[dat.bids[j][0]];
                     delete this.bids[dat.bids[j][0]];
                     continue;
                 }
@@ -152,6 +216,7 @@ class HeatMap extends React.Component<any, any> {
             }
             for (let j=0; j<dat.asks.length; j++) {
                 if (dat.asks[j][1] === 0) {
+                    this.delAsks[dat.asks[j][0]] = this.asks[dat.asks[j][0]];
                     delete this.asks[dat.asks[j][0]];
                     continue;
                 }
@@ -169,11 +234,54 @@ class HeatMap extends React.Component<any, any> {
                 while (!!(tsQuantum - timestamp)) {
                     snapshotOB(currentPrice, timestamp - Math.floor(store.ordersBook.dateTimestamp!/this.quantumData));
                     ++timestamp;
-                    if (this.ticker[timestamp])
+                    if (this.ticker[timestamp]) {
+                        const layerAsks = this.layerAsksRef.current;
+                        const layerBids = this.layerBidsRef.current;
+                        if (currentPrice > this.ticker[timestamp]) {
+                            // @ts-ignore
+                            layerAsks.add(new Konva.Rect({
+                                x: ((10 + ((timestamp - Math.floor(store.ordersBook.dateTimestamp! / this.quantumData)) * (this.countPixels + 1))) - 1),
+                                y: 0,
+                                width: 1,
+                                height: this.heightCanvas,
+                                fill: 'red',
+                                opacity: 0.15
+                            }));
+                            // @ts-ignore
+                            layerBids.add(new Konva.Rect({
+                                x: ((10 + ((timestamp - Math.floor(store.ordersBook.dateTimestamp! / this.quantumData)) * (this.countPixels + 1))) - 1),
+                                y: 0,
+                                width: 1,
+                                height: this.heightCanvas,
+                                fill: 'red',
+                                opacity: 0.15
+                            }));
+                        } else if (currentPrice < this.ticker[timestamp]) {
+                            // @ts-ignore
+                            layerAsks.add(new Konva.Rect({
+                                x: ((10 + ((timestamp - Math.floor(store.ordersBook.dateTimestamp!/this.quantumData))*(this.countPixels+1)))-1),
+                                y: 0,
+                                width: 1,
+                                height: this.heightCanvas,
+                                fill: 'green',
+                                opacity: 0.15
+                            }));
+                            // @ts-ignore
+                            layerBids.add(new Konva.Rect({
+                                x: ((10 + ((timestamp - Math.floor(store.ordersBook.dateTimestamp!/this.quantumData))*(this.countPixels+1)))-1),
+                                y: 0,
+                                width: 1,
+                                height: this.heightCanvas,
+                                fill: 'green',
+                                opacity: 0.15
+                            }));
+                        }
                         currentPrice = this.ticker[timestamp];
+                    }
                 }
             calcOrderBook(dat);
         }
+        console.log('END calculate');
     }
 
     render() {
@@ -235,7 +343,7 @@ class HeatMap extends React.Component<any, any> {
                                 width={store.width}
                                 height={1}
                                 fill={'black'}
-                                opacity={0.48}
+                                opacity={0.05}
                             />
                             {/*<Rect*/}
                             {/*    x={9}*/}
@@ -250,9 +358,17 @@ class HeatMap extends React.Component<any, any> {
                                 x={5}
                                 y={((this.yLevels-Math.floor(150/this.countPixels))*(this.countPixels+1))-1 + this.yHeightMetric}
                                 width={store.width-5}
-                                height={5}
+                                height={1}
                                 fill={'black'}
-                                opacity={0.05}
+                                opacity={0.03}
+                            />
+                            <Rect
+                                x={5}
+                                y={((this.yLevels-Math.floor(150/this.countPixels))*(this.countPixels+1))+1 + this.yHeightMetric}
+                                width={store.width-5}
+                                height={1}
+                                fill={'black'}
+                                opacity={0.03}
                             />
                             { xAxisLabelContent() }
                         </Layer>
@@ -266,7 +382,7 @@ class HeatMap extends React.Component<any, any> {
                                 width={store.width}
                                 height={1}
                                 fill={'black'}
-                                opacity={0.48}
+                                opacity={0.05}
                             />
                             {/*<Rect*/}
                             {/*    x={9}*/}
@@ -281,9 +397,17 @@ class HeatMap extends React.Component<any, any> {
                                 x={5}
                                 y={((this.yLevels-Math.floor((store.depthOB!*100000)/this.countPixels))*(this.countPixels+1))-1 + this.yHeightMetric}
                                 width={store.width-5}
-                                height={5}
+                                height={1}
                                 fill={'black'}
-                                opacity={0.05}
+                                opacity={0.03}
+                            />
+                            <Rect
+                                x={5}
+                                y={((this.yLevels-Math.floor((store.depthOB!*100000)/this.countPixels))*(this.countPixels+1))+1 + this.yHeightMetric}
+                                width={store.width-5}
+                                height={1}
+                                fill={'black'}
+                                opacity={0.03}
                             />
                             { xAxisLabelContent() }
                         </Layer>
