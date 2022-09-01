@@ -27,7 +27,7 @@ class Header extends React.Component<any, any>{
     }
 
     handleChangeDepthOB(v: number) {
-        store.depthOB = v/10000;
+        store.depthOB = v;
     }
 
     handleSelectQuantum(v: number) {
@@ -79,7 +79,7 @@ class Header extends React.Component<any, any>{
                     { markets.map(m => (<Option key={m} value={m}>{m}</Option>)) }
                 </Select>
                 <RangePicker disabled={store.globalLoading} showTime onChange={(...arg)=>this.handleChangeDateRange(arg[0] as any[])} />
-                <InputNumber disabled={store.globalLoading} addonBefore="DepthOB" min={1} max={100} defaultValue={15} onChange={(v)=>this.handleChangeDepthOB(v)} />
+                <InputNumber disabled={store.globalLoading} addonBefore="DepthOBLvls" min={5} max={1000} defaultValue={50} onChange={(v)=>this.handleChangeDepthOB(v)} />
                 <Select disabled={store.globalLoading} loading={store.globalLoading} defaultValue={100} onChange={(v)=>this.handleSelectQuantum(v)} style={{minWidth: 80}}>
                     <Option value={100}>0.1 s</Option>
                     <Option value={1000}>1 s</Option>

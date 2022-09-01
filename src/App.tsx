@@ -10,7 +10,7 @@ const App: FC = () => (
     <Space direction="vertical">
         <Header />
         <Candle />
-        {/*<HeatMap />*/}
+        <HeatMap />
     </Space>
 );
 

@@ -14,7 +14,7 @@ class Global {
     dateStart?: string | null;
     dateStop?: string | null;
     quantum?: number = 100;
-    depthOB?: number = 0.0015;
+    depthOB?: number = 50;
     ordersBook: {
         sequence?: number;
         bids?: {[price: number]: number};
@@ -35,7 +35,7 @@ class Global {
             dateStart: null,
             dateStop: null,
             quantum: 100,
-            depthOB: 0.0015,
+            depthOB: 50,
         });
 
         // @ts-ignore

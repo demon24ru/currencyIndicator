@@ -8,6 +8,8 @@ import store from "../../store/global";
 import {define} from "cellx";
 import {dateCompensationTimeZone, dateToISOString} from "../../utils/date";
 import {CandleDto} from "../../utils/interfaces/candle.dto";
+import {priceLevel} from "../../utils/price";
+import {marketsPriceLength} from "../../utils/markets";
 
 
 const { Text } = Typography;
@@ -18,19 +20,19 @@ class Candle extends React.Component<any, any> {
     quantum: number = 1000;   // quantum candle 1000 ms
 
 
+    heightCanvas: number = 450;
     data: CandleDto[] = [];
     loading?: boolean;
     marketData?: string;
     dateStartData?: string;
     dateStopData?: string;
-    // quantumData: number = 100;
     depthOBData: number = 0.0015;
 
     constructor(props: any) {
         super(props);
-        define(this, {
-            loading: false,
-        });
+        // define(this, {
+        //     loading: false,
+        // });
     }
 
     componentDidUpdate(prevProps: Readonly<any>, prevState: Readonly<any>, snapshot?: any) {
@@ -51,35 +53,32 @@ class Candle extends React.Component<any, any> {
     calcData() {
         this.data = [];
 
-        const ts_code: string = '000001.SH';
+        let maxPrice: number = 0;
+        let minPrice: number = 99999999999;
         let timestamp: number = Math.floor(store.ordersBook.dateTimestamp! / this.quantum);
+        let currentPrice: number = store.ticker[0].price;
         this.data.push({
-            ts_code,
             trade_date: dateToISOString(new Date(dateCompensationTimeZone(timestamp* this.quantum))),
-            close: store.ticker[0].price,
-            open: store.ticker[0].price,
-            high: store.ticker[0].price,
-            low: store.ticker[0].price,
-            vol: 1000, amount: 23233232
+            close: currentPrice,
+            open: currentPrice,
+            high: currentPrice,
+            low: currentPrice,
         });
         for (let i=0; i<store.ticker.length; i++) {
             const ts = Math.floor(store.ticker[i].timestamp/10);
-            const currentPrice: number = store.ticker[i].price;
             if (timestamp < ts) {
                 while (!!(ts - timestamp)) {
                     ++timestamp;
                     this.data.push({
-                        ts_code,
                         trade_date: dateToISOString(new Date(dateCompensationTimeZone(timestamp* this.quantum))),
                         close: currentPrice,
                         open: currentPrice,
                         high: currentPrice,
                         low: currentPrice,
-                        vol: 1000, amount: 2032
                     });
                 }
-                continue;
             }
+            currentPrice = store.ticker[i].price;
             if (currentPrice < this.data[this.data.length-1].low) {
                 this.data[this.data.length-1].low = currentPrice;
             }
@@ -87,24 +86,19 @@ class Candle extends React.Component<any, any> {
                 this.data[this.data.length-1].high = currentPrice;
             }
             this.data[this.data.length-1].close = currentPrice;
+
+            if (minPrice > currentPrice)
+                minPrice = currentPrice;
+            if (maxPrice < currentPrice)
+                maxPrice = currentPrice;
         }
 
-        console.log('END calculate', this.data);
+        this.heightCanvas = Math.round((Math.round(maxPrice - minPrice)/priceLevel(store.market!))*1.2);
+
+        console.log('END calculate');
     }
 
     render() {
-        // Asks - sell
-        // Bids - buy
-
-        const config = {
-            width: store.width,
-            height: 450,
-            data: this.data,
-            xField: 'trade_date',
-            yField: ['open', 'close', 'high', 'low'],
-            fallingFill: '#ef5350',
-            risingFill: '#26a69a',
-        };
 
         if (!store.dateStart || !store.dateStop)
             return (<div className="app-container">
@@ -114,13 +108,39 @@ class Candle extends React.Component<any, any> {
             return (<div className="app-container">
                 <Text>Loading...</Text>
             </div>);
-        if (this.loading)
-            return (<div className="app-container">
-                <Text>Calculate Data...</Text>
-            </div>);
 
         this.calcData();
 
+        const config = {
+            width: store.width,
+            height: this.heightCanvas,
+            data: this.data,
+            xField: 'trade_date',
+            yField: ['open', 'close', 'high', 'low'],
+            fallingFill: '#ef5350',
+            risingFill: '#26a69a',
+            tooltip: {
+                crosshairs: {// @ts-ignore
+                    text: (type, defaultContent, items) => {
+                        let textContent;
+                        if (type === 'x') {
+                            textContent = dateToISOString(new Date(defaultContent));
+                        } else {
+                            textContent = `${defaultContent.toFixed(marketsPriceLength[store.market!].after)}`;
+                        }
+                        return {
+                            position: type === 'y' ? 'start' : 'end',
+                            content: textContent,
+                            style: {
+                                fill: '#dfdfdf',
+                            },
+                        };
+                    },
+                },
+            },
+        };
+
+        console.log(this.heightCanvas, this.data);
         return (
             <div className="app-container">
                 {/*@ts-ignore*/}
