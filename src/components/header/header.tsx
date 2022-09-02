@@ -22,17 +22,13 @@ class Header extends React.Component<any, any>{
         this.loadData();
     }
 
-    handleSelectSecondMarket(v: string) {
-        store.secondMarket = v;
-    }
-
     handleChangeDepthOB(v: number) {
         store.depthOB = v;
     }
 
-    handleSelectQuantum(v: number) {
-        store.quantum = v;
-    }
+    // handleSelectQuantum(v: number) {
+    //     store.quantum = v;
+    // }
 
     handleChangeDateRange(date: any[]) {
         if (date === null) {
@@ -74,16 +70,12 @@ class Header extends React.Component<any, any>{
                 <Select disabled={store.globalLoading} loading={store.globalLoading} defaultValue="ETH-USDT" onChange={(v)=>this.handleSelectMarket(v)} style={{minWidth: 120}}>
                     { markets.map(m => (<Option key={m} value={m}>{m}</Option>)) }
                 </Select>
-                <Typography.Text>-</Typography.Text>
-                <Select disabled={store.globalLoading} loading={store.globalLoading} defaultValue="ETH3L-USDT" onChange={(v)=>this.handleSelectSecondMarket(v)} style={{minWidth: 120}}>
-                    { markets.map(m => (<Option key={m} value={m}>{m}</Option>)) }
-                </Select>
                 <RangePicker disabled={store.globalLoading} showTime onChange={(...arg)=>this.handleChangeDateRange(arg[0] as any[])} />
-                <InputNumber disabled={store.globalLoading} addonBefore="DepthOBLvls" min={5} max={1000} defaultValue={50} onChange={(v)=>this.handleChangeDepthOB(v)} />
-                <Select disabled={store.globalLoading} loading={store.globalLoading} defaultValue={100} onChange={(v)=>this.handleSelectQuantum(v)} style={{minWidth: 80}}>
-                    <Option value={100}>0.1 s</Option>
-                    <Option value={1000}>1 s</Option>
-                </Select>
+                <InputNumber disabled={store.globalLoading} addonBefore="OB Levels" min={5} max={1000} defaultValue={50} onChange={(v)=>this.handleChangeDepthOB(v)} />
+                {/*<Select disabled={store.globalLoading} loading={store.globalLoading} defaultValue={100} onChange={(v)=>this.handleSelectQuantum(v)} style={{minWidth: 80}}>*/}
+                {/*    <Option value={100}>0.1 s</Option>*/}
+                {/*    <Option value={1000}>1 s</Option>*/}
+                {/*</Select>*/}
             </Space>
         );
     }

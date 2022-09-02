@@ -19,6 +19,7 @@ class HeatMap extends React.Component<any, any> {
 
     countPixels: number = 3;   // number of pixels in one indicator
     yHeightMetric: number = 10;
+    quantum: number = 100; // quantum ms timestamp
 
 
     layerAsksRef: any;
@@ -27,7 +28,6 @@ class HeatMap extends React.Component<any, any> {
     marketData?: string;
     dateStartData?: string;
     dateStopData?: string;
-    quantumData: number = 100;
     depthOBData: number = 0.0006;
     asks: {[price: number]: number} = {};
     bids: {[price: number]: number} = {};
@@ -69,10 +69,8 @@ class HeatMap extends React.Component<any, any> {
     }
 
     preCalcData() {
-        this.yLevels = 50 + store.depthOB!;
-        this.heightCanvas = (this.yLevels*(this.countPixels+1)) + this.yHeightMetric;
-
-        this.quantumData = store.quantum!;
+        this.yLevels = 50 + store.depthOB! + 1;
+        this.heightCanvas = Math.round(this.yLevels*(this.countPixels+1)) + this.yHeightMetric;
     }
 
     async calcData() {
@@ -82,7 +80,7 @@ class HeatMap extends React.Component<any, any> {
         this.bids = _.clone(store.ordersBook.bids!);
 
         for (let i=0; i<store.ticker.length; i++) {
-            this.ticker[(this.quantumData > 100 ? Math.floor((store.ticker[i].timestamp * 100) / this.quantumData) : store.ticker[i].timestamp)] = store.ticker[i].price;
+            this.ticker[store.ticker[i].timestamp] = store.ticker[i].price;
         }
 
         const snapshotOB = (currentPrice: number, ts: number) => {
@@ -95,8 +93,8 @@ class HeatMap extends React.Component<any, any> {
             const currentPriceStop: number = currentPrice + this.depthOBData*priceLevel(store.market!);
             let maxSize: number = 0;
             for (let v of Object.keys(this.asks)) {
-                if (Number(v) < currentPriceStop) {
-                    const prLevel: number = Math.round((currentPriceStop - Number(v))/priceLevel(store.market!)) - 1;
+                if (Number(v) <= currentPriceStop) {
+                    const prLevel: number = Math.round((currentPriceStop - Number(v))/priceLevel(store.market!));
                     let count: number = 0;
                     if (prLevel >= this.yLevels) {
                         asks[this.yLevels - 1] = (asks[this.yLevels - 1] || 0) + this.asks[Number(v)];
@@ -111,8 +109,8 @@ class HeatMap extends React.Component<any, any> {
             }
 
             for (let v of Object.keys(this.bids)) {
-                if (Number(v) > currentPriceStart) {
-                    const prLevel: number = this.yLevels - Math.round((Number(v) - currentPriceStart)/priceLevel(store.market!)) - 2;
+                if (Number(v) >= currentPriceStart) {
+                    const prLevel: number = this.yLevels - 1 - Math.round((Number(v) - currentPriceStart)/priceLevel(store.market!));
                     let count: number = 0;
                     if (prLevel < 0) {
                         bids[0] = (bids[0] || 0) + this.bids[Number(v)];
@@ -127,8 +125,8 @@ class HeatMap extends React.Component<any, any> {
             }
 
             for (let v of Object.keys(this.delAsks)) {
-                if (Number(v) < currentPriceStop) {
-                    const prLevel: number = Math.round((currentPriceStop - Number(v))/priceLevel(store.market!)) - 1;
+                if (Number(v) <= currentPriceStop) {
+                    const prLevel: number = Math.round((currentPriceStop - Number(v))/priceLevel(store.market!));
                     let count: number = 0;
                     if (prLevel >= this.yLevels) {
                         delAsks[this.yLevels - 1] = (delAsks[this.yLevels - 1] || 0) + this.delAsks[Number(v)];
@@ -143,9 +141,8 @@ class HeatMap extends React.Component<any, any> {
             }
 
             for (let v of Object.keys(this.delBids)) {
-                if (Number(v) > currentPriceStart) {
-                    // if (Number(v) >= currentPrice) {
-                    const prLevel: number = this.yLevels - Math.round((Number(v) - currentPriceStart)/priceLevel(store.market!)) - 2;
+                if (Number(v) >= currentPriceStart) {
+                    const prLevel: number = this.yLevels - 1 - Math.round((Number(v) - currentPriceStart)/priceLevel(store.market!));
                     let count: number = 0;
                     if (prLevel < 0) {
                         delBids[0] = (delBids[0] || 0) + this.delBids[Number(v)];
@@ -176,7 +173,7 @@ class HeatMap extends React.Component<any, any> {
                     y: (this.yHeightMetric + Math.round(Number(v)*(this.countPixels+1))),
                     width: this.countPixels,
                     height: this.countPixels,
-                    fill: 'black',
+                    fill: 'blue',
                     opacity: Math.round((delAsks[v]/maxSize)*100)/100
                 }));
             }
@@ -197,7 +194,7 @@ class HeatMap extends React.Component<any, any> {
                     y: (this.yHeightMetric + Math.round(Number(v)*(this.countPixels+1))),
                     width: this.countPixels,
                     height: this.countPixels,
-                    fill: 'black',
+                    fill: 'blue',
                     opacity: Math.round((delBids[v]/maxSize)*100)/100
                 }));
             }
@@ -225,15 +222,15 @@ class HeatMap extends React.Component<any, any> {
             }
         }
 
-        let timestamp: number = Math.floor(store.ordersBook.dateTimestamp! / this.quantumData);
+        let timestamp: number = Math.floor(store.ordersBook.dateTimestamp! / this.quantum);
         let currentPrice: number = this.ticker[timestamp];
         console.log('currentPrice', currentPrice);
         for (let i=0; i<store.level2.length; i++) {
             const dat: Level2 = store.level2[i];
-            const tsQuantum: number = Math.floor(dat.timestamp/this.quantumData);
+            const tsQuantum: number = Math.floor(dat.timestamp/this.quantum);
             if (timestamp < tsQuantum)
                 while (!!(tsQuantum - timestamp)) {
-                    snapshotOB(currentPrice, timestamp - Math.floor(store.ordersBook.dateTimestamp!/this.quantumData));
+                    snapshotOB(currentPrice, timestamp - Math.floor(store.ordersBook.dateTimestamp!/this.quantum));
                     ++timestamp;
                     if (this.ticker[timestamp]) {
                         const layerAsks = this.layerAsksRef.current;
@@ -241,7 +238,7 @@ class HeatMap extends React.Component<any, any> {
                         if (currentPrice > this.ticker[timestamp]) {
                             // @ts-ignore
                             layerAsks.add(new Konva.Rect({
-                                x: ((10 + ((timestamp - Math.floor(store.ordersBook.dateTimestamp! / this.quantumData)) * (this.countPixels + 1))) - 1),
+                                x: ((10 + ((timestamp - Math.floor(store.ordersBook.dateTimestamp! / this.quantum)) * (this.countPixels + 1))) - 1),
                                 y: 0,
                                 width: 1,
                                 height: this.heightCanvas,
@@ -250,7 +247,7 @@ class HeatMap extends React.Component<any, any> {
                             }));
                             // @ts-ignore
                             layerBids.add(new Konva.Rect({
-                                x: ((10 + ((timestamp - Math.floor(store.ordersBook.dateTimestamp! / this.quantumData)) * (this.countPixels + 1))) - 1),
+                                x: ((10 + ((timestamp - Math.floor(store.ordersBook.dateTimestamp! / this.quantum)) * (this.countPixels + 1))) - 1),
                                 y: 0,
                                 width: 1,
                                 height: this.heightCanvas,
@@ -260,7 +257,7 @@ class HeatMap extends React.Component<any, any> {
                         } else if (currentPrice < this.ticker[timestamp]) {
                             // @ts-ignore
                             layerAsks.add(new Konva.Rect({
-                                x: ((10 + ((timestamp - Math.floor(store.ordersBook.dateTimestamp!/this.quantumData))*(this.countPixels+1)))-1),
+                                x: ((10 + ((timestamp - Math.floor(store.ordersBook.dateTimestamp!/this.quantum))*(this.countPixels+1)))-1),
                                 y: 0,
                                 width: 1,
                                 height: this.heightCanvas,
@@ -269,7 +266,7 @@ class HeatMap extends React.Component<any, any> {
                             }));
                             // @ts-ignore
                             layerBids.add(new Konva.Rect({
-                                x: ((10 + ((timestamp - Math.floor(store.ordersBook.dateTimestamp!/this.quantumData))*(this.countPixels+1)))-1),
+                                x: ((10 + ((timestamp - Math.floor(store.ordersBook.dateTimestamp!/this.quantum))*(this.countPixels+1)))-1),
                                 y: 0,
                                 width: 1,
                                 height: this.heightCanvas,
@@ -291,14 +288,15 @@ class HeatMap extends React.Component<any, any> {
         this.preCalcData();
 
         const xAxisLabelContent = () => {
-            console.log(store.width, store.quantum, store.depthOB);
+            console.log(store.width, store.depthOB);
             const ret: any[] = [];
-            for (let i=0; i< Math.floor((store.width-10)/(this.countPixels+1)); i++) {
-                if ((i/50)%1 === 0) {
+            const offset: number = (store.ordersBook.dateTimestamp!%1000)/this.quantum;
+            for (let i=0; i< Math.floor((store.width-10)/(this.countPixels+1))-offset; i++) {
+                if ((i/40)%1 === 0) {
                     ret.push(
                         <Rect
                             key={`${i}rect`}
-                            x={(10 + (i*(this.countPixels+1)))}
+                            x={(10 + (offset*(this.countPixels+1)) + (i*(this.countPixels+1)))}
                             y={0}
                             width={1}
                             height={this.heightCanvas}
@@ -309,8 +307,8 @@ class HeatMap extends React.Component<any, any> {
                     ret.push(
                         <TextKonva
                             key={`${i}text`}
-                            text={dateToISOString(new Date(dateCompensationTimeZone((Math.floor(store.ordersBook.dateTimestamp! / this.quantumData) + i)* this.quantumData))) + (store.quantum === 100 ? '.' + ((Math.floor(store.ordersBook.dateTimestamp! / this.quantumData) + i)%10).toString() : '')}
-                            x={(12 + (i*(this.countPixels+1)))}
+                            text={dateToISOString(new Date(dateCompensationTimeZone((Math.floor(store.ordersBook.dateTimestamp! / this.quantum) + i)* this.quantum)))}
+                            x={(12 + (offset*(this.countPixels+1)) + (i*(this.countPixels+1)))}
                             y={0}
                         />
                     );
@@ -331,6 +329,7 @@ class HeatMap extends React.Component<any, any> {
         return (
             <div className="app-container">
                 <Space direction="vertical">
+                    { this.loading && <Text>Calculate Data...</Text> }
                     <Stage width={store.width} height={this.heightCanvas}>
                         <Layer ref={this.layerAsksRef}>
                             { /* Metrics */ }
@@ -362,7 +361,7 @@ class HeatMap extends React.Component<any, any> {
                             <TextKonva
                                 text="0"
                                 x={0}
-                                y={Math.round((this.yLevels - 50 - 1)*(this.countPixels+1)) -3 + this.yHeightMetric}
+                                y={Math.round((this.yLevels - 50 - 1)*(this.countPixels+1)) - 3 + this.yHeightMetric}
                             />
                             { xAxisLabelContent() }
                         </Layer>
@@ -381,7 +380,7 @@ class HeatMap extends React.Component<any, any> {
                             { /* Zero level */ }
                             <Rect
                                 x={5}
-                                y={Math.round((50 - 1)*(this.countPixels+1))-1 + this.yHeightMetric}
+                                y={Math.round(50*(this.countPixels+1))-1 + this.yHeightMetric}
                                 width={store.width-5}
                                 height={1}
                                 fill={'black'}
@@ -389,7 +388,7 @@ class HeatMap extends React.Component<any, any> {
                             />
                             <Rect
                                 x={5}
-                                y={Math.round((50)*(this.countPixels+1))-1 + this.yHeightMetric}
+                                y={Math.round((50+1)*(this.countPixels+1))-1 + this.yHeightMetric}
                                 width={store.width-5}
                                 height={1}
                                 fill={'black'}
@@ -398,12 +397,11 @@ class HeatMap extends React.Component<any, any> {
                             <TextKonva
                                 text="0"
                                 x={0}
-                                y={Math.round((50 - 1)*(this.countPixels+1))-3 + this.yHeightMetric}
+                                y={Math.round(50*(this.countPixels+1))-3 + this.yHeightMetric}
                             />
                             { xAxisLabelContent() }
                         </Layer>
                     </Stage>
-                    { this.loading && <Text>Calculate Data...</Text> }
                 </Space>
             </div>
         );

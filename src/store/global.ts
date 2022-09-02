@@ -10,10 +10,9 @@ class Global {
     width: number = 1000;
     server?: string;
     market?: string;
-    secondMarket?: string;
     dateStart?: string | null;
     dateStop?: string | null;
-    quantum?: number = 100;
+    // quantum?: number = 100;
     depthOB?: number = 50;
     ordersBook: {
         sequence?: number;
@@ -31,10 +30,9 @@ class Global {
             globalLoading: false,
             server: '192.168.8.19:8123',
             market: 'ETH-USDT',
-            secondMarket: 'ETH3L-USDT',
             dateStart: null,
             dateStop: null,
-            quantum: 100,
+            // quantum: 100,
             depthOB: 50,
         });
 

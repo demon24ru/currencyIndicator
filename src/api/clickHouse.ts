@@ -80,7 +80,7 @@ export async function ordersbook(): Promise<void> {
         store.ordersBook.bids = pars(data.data[id][1] as string);
         store.ordersBook.asks = pars(data.data[id][2] as string);
 
-        store.width = 10 + Math.floor(((new Date(store.dateStop!).getTime() - (d.getTimezoneOffset() * 60 * 1000) - store.ordersBook.dateTimestamp)/store.quantum!)*4);
+        store.width = 10 + Math.floor(((new Date(store.dateStop!).getTime() - (d.getTimezoneOffset() * 60 * 1000) - store.ordersBook.dateTimestamp)/100)*4);
     } catch (e) {
         store.ordersBook = {};
         throw new Error('Orders Book error parse');

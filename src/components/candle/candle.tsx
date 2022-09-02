@@ -1,5 +1,5 @@
 import React from "react";
-import {Space, Typography} from "antd";
+import {Typography} from "antd";
 // import Konva from 'konva';
 // import {Layer, Rect, Stage, Text as TextKonva} from "react-konva";
 import { Stock } from '@ant-design/plots';
@@ -22,7 +22,7 @@ class Candle extends React.Component<any, any> {
 
     heightCanvas: number = 450;
     data: CandleDto[] = [];
-    loading?: boolean;
+    // loading?: boolean;
     marketData?: string;
     dateStartData?: string;
     dateStopData?: string;
@@ -45,8 +45,6 @@ class Candle extends React.Component<any, any> {
             this.dateStartData = store.dateStart!;
             this.dateStopData = store.dateStop!;
             this.depthOBData = store.depthOB!;
-
-            console.log('Candle data reload');
         }
     }
 
@@ -63,11 +61,14 @@ class Candle extends React.Component<any, any> {
             open: currentPrice,
             high: currentPrice,
             low: currentPrice,
+            amount: 0
         });
         for (let i=0; i<store.ticker.length; i++) {
             const ts = Math.floor(store.ticker[i].timestamp/10);
             if (timestamp < ts) {
                 while (!!(ts - timestamp)) {
+                    if ((this.data[this.data.length-1].close - this.data[this.data.length-1].open) !== 0 )
+                        this.data[this.data.length-1].amount = Math.round(((this.data[this.data.length-1].close - this.data[this.data.length-1].open)/this.data[this.data.length-1].open)*10000)/100;
                     ++timestamp;
                     this.data.push({
                         trade_date: dateToISOString(new Date(dateCompensationTimeZone(timestamp* this.quantum))),
@@ -75,6 +76,7 @@ class Candle extends React.Component<any, any> {
                         open: currentPrice,
                         high: currentPrice,
                         low: currentPrice,
+                        amount: 0
                     });
                 }
             }
@@ -94,8 +96,6 @@ class Candle extends React.Component<any, any> {
         }
 
         this.heightCanvas = Math.round((Math.round(maxPrice - minPrice)/priceLevel(store.market!))*1.2);
-
-        console.log('END calculate');
     }
 
     render() {
@@ -116,9 +116,14 @@ class Candle extends React.Component<any, any> {
             height: this.heightCanvas,
             data: this.data,
             xField: 'trade_date',
-            yField: ['open', 'close', 'high', 'low'],
+            yField: ['open', 'close', 'high', 'low', 'amount'],
             fallingFill: '#ef5350',
             risingFill: '#26a69a',
+            meta: {
+                amount: {
+                    alias: '%'
+                }
+            },
             tooltip: {
                 crosshairs: {// @ts-ignore
                     text: (type, defaultContent, items) => {
