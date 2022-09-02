@@ -290,7 +290,7 @@ class HeatMap extends React.Component<any, any> {
         const xAxisLabelContent = () => {
             console.log(store.width, store.depthOB);
             const ret: any[] = [];
-            const offset: number = (store.ordersBook.dateTimestamp!%1000)/this.quantum;
+            const offset: number = 10 - Math.floor((store.ordersBook.dateTimestamp!%1000)/this.quantum);
             for (let i=0; i< Math.floor((store.width-10)/(this.countPixels+1))-offset; i++) {
                 if ((i/40)%1 === 0) {
                     ret.push(
@@ -307,7 +307,7 @@ class HeatMap extends React.Component<any, any> {
                     ret.push(
                         <TextKonva
                             key={`${i}text`}
-                            text={dateToISOString(new Date(dateCompensationTimeZone((Math.floor(store.ordersBook.dateTimestamp! / this.quantum) + i)* this.quantum)))}
+                            text={dateToISOString(new Date(dateCompensationTimeZone((Math.floor(store.ordersBook.dateTimestamp! / this.quantum) + offset + i)* this.quantum)))}
                             x={(12 + (offset*(this.countPixels+1)) + (i*(this.countPixels+1)))}
                             y={0}
                         />
