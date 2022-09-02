@@ -8,7 +8,6 @@ import store from "../../store/global";
 import {define} from "cellx";
 import {dateCompensationTimeZone, dateToISOString} from "../../utils/date";
 import {Level2} from "../../utils/interfaces/level2.dto";
-import {marketsPriceLength} from "../../utils/markets";
 import {priceLevel} from "../../utils/price";
 
 
@@ -84,7 +83,6 @@ class HeatMap extends React.Component<any, any> {
         }
 
         const snapshotOB = (currentPrice: number, ts: number) => {
-            // console.log(currentPrice);
             const asks: {[price: number]: number} = {};
             const bids: {[price: number]: number} = {};
             const delAsks: {[price: number]: number} = {};

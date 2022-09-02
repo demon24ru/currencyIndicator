@@ -95,7 +95,10 @@ class Candle extends React.Component<any, any> {
                 maxPrice = currentPrice;
         }
 
-        this.heightCanvas = Math.round((Math.round(maxPrice - minPrice)/priceLevel(store.market!))*1.2);
+        console.log(maxPrice, minPrice, priceLevel(store.market!));
+        this.heightCanvas = Math.round(((maxPrice - minPrice)/maxPrice)*10000*4);
+        if (window.innerHeight/1.3 > this.heightCanvas)
+            this.heightCanvas = Math.round(window.innerHeight/1.3);
     }
 
     render() {

@@ -20,12 +20,17 @@ export async function level2(): Promise<void> {
     if (!data || !data.data.length)
         throw new Error('Level2 No Data load!');
 
-    const normPr = (bidsAsks: (string | number)[][]) => {
+    const normPr = (bidsAsks: string[][]) => {
+        const resp: number[][] = [];
         for (let i=0; i<bidsAsks.length; i++) {
-            bidsAsks[i][0] = Number(bidsAsks[i][0]) // price
-            bidsAsks[i][1] = Number(bidsAsks[i][1]) // size
+            if (bidsAsks[i][0] === '0')
+                continue;
+            resp.push([
+                Number(bidsAsks[i][0]), // price
+                Number(bidsAsks[i][1])  // size
+            ]);
         }
-        return bidsAsks;
+        return resp;
     }
     try {
         for (let i=0; i<data.data.length; i++) {
