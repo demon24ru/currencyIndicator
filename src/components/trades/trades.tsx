@@ -127,7 +127,7 @@ class Trades extends React.Component<any, any> {
             data: this.dataCount,
             layout: 'vertical',
             xField: 'date',
-            yField: ['sells', 'buys'],
+            yField: ['buys', 'sells'],
             yAxis: {
                 'sells': {
                     min: 0,
@@ -156,7 +156,7 @@ class Trades extends React.Component<any, any> {
             data: this.dataSize,
             layout: 'vertical',
             xField: 'date',
-            yField: ['sells', 'buys'],
+            yField: ['buys', 'sells'],
             yAxis: {
                 'sells': {
                     min: 0,
