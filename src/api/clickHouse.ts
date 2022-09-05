@@ -32,6 +32,7 @@ export async function level2(): Promise<void> {
         }
         return resp;
     }
+    store.level2 = [];
     try {
         for (let i=0; i<data.data.length; i++) {
             const dat: Level2Dto = JSON.parse(data.data[i][0] as string) as Level2Dto;
@@ -67,6 +68,8 @@ export async function ordersbook(): Promise<void> {
         const v = (x: number) => Math.abs(((data.data[x][3] as number) * 1000) - (d.getTime() - (d.getTimezoneOffset() * 60 * 1000)));
         if (v(id) > v(i)) id = i;
     }
+
+    store.ordersBook = {};
 
     store.ordersBook.sequence = Number(data.data[id][0]);
     store.ordersBook.dateTimestamp = (data.data[id][3] as number)*1000;
@@ -105,6 +108,8 @@ export async function ticker(preLimit: number = 5): Promise<void> {
     });
     if (!data || !data.data.length)
         throw new Error('Ticker No Data load!');
+
+    store.ticker = [];
     try {
         let price: number = 0;
         let timestamp: number = 0;
@@ -151,6 +156,8 @@ export async function trade(): Promise<void> {
     });
     if (!data || !data.data.length)
         throw new Error('Trade No Data load!');
+
+    store.trade = [];
     try {
         for (let i=0; i<data.data.length; i++) {
             const dat: TradeDto = JSON.parse(data.data[i][0] as string) as TradeDto;

@@ -4,6 +4,7 @@ import './App.less';
 import HeatMap from "./components/heatMap/heatMap";
 import Header from "./components/header/header";
 import Candle from "./components/candle/candle";
+import Trades from "./components/trades/trades";
 
 
 const App: FC = () => (
@@ -11,6 +12,7 @@ const App: FC = () => (
         <Header />
         <Candle />
         <HeatMap />
+        <Trades />
     </Space>
 );
 
