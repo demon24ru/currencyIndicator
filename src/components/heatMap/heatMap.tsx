@@ -327,7 +327,6 @@ class HeatMap extends React.Component<any, any> {
         return (
             <div className="app-container">
                 <Space direction="vertical">
-                    { this.loading && <Text>Calculate Data...</Text> }
                     <Stage width={store.width} height={this.heightCanvas}>
                         <Layer ref={this.layerAsksRef}>
                             { /* Metrics */ }
@@ -400,6 +399,7 @@ class HeatMap extends React.Component<any, any> {
                             { xAxisLabelContent() }
                         </Layer>
                     </Stage>
+                    { this.loading && <Text>Calculate Data...</Text> }
                 </Space>
             </div>
         );
