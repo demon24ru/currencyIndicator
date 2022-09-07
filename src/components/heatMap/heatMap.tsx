@@ -122,39 +122,49 @@ class HeatMap extends React.Component<any, any> {
                 }
             }
 
-            for (let v of Object.keys(this.delAsks)) {
-                if (Number(v) <= currentPriceStop) {
-                    const prLevel: number = Math.round((currentPriceStop - Number(v))/priceLevel(store.market!));
-                    let count: number = 0;
-                    if (prLevel >= this.yLevels) {
-                        delAsks[this.yLevels - 1] = (delAsks[this.yLevels - 1] || 0) + this.delAsks[Number(v)];
-                        count = delAsks[this.yLevels - 1];
-                    } else {
-                        delAsks[prLevel] = (delAsks[prLevel] || 0) + this.delAsks[Number(v)];
-                        count = delAsks[prLevel];
-                    }
-                    if (maxSize < count)
-                        maxSize = count;
-                }
-            }
+            // for (let v of Object.keys(this.delAsks)) {
+            //     if (Number(v) <= currentPriceStop) {
+            //         const prLevel: number = Math.round((currentPriceStop - Number(v))/priceLevel(store.market!));
+            //         let count: number = 0;
+            //         if (prLevel >= this.yLevels) {
+            //             delAsks[this.yLevels - 1] = (delAsks[this.yLevels - 1] || 0) + this.delAsks[Number(v)];
+            //             count = delAsks[this.yLevels - 1];
+            //         } else {
+            //             delAsks[prLevel] = (delAsks[prLevel] || 0) + this.delAsks[Number(v)];
+            //             count = delAsks[prLevel];
+            //         }
+            //         if (maxSize < count)
+            //             maxSize = count;
+            //     }
+            // }
 
-            for (let v of Object.keys(this.delBids)) {
-                if (Number(v) >= currentPriceStart) {
-                    const prLevel: number = this.yLevels - 1 - Math.round((Number(v) - currentPriceStart)/priceLevel(store.market!));
-                    let count: number = 0;
-                    if (prLevel < 0) {
-                        delBids[0] = (delBids[0] || 0) + this.delBids[Number(v)];
-                        count = delBids[0];
-                    } else {
-                        delBids[prLevel] = (delBids[prLevel] || 0) + this.delBids[Number(v)];
-                        count = delBids[prLevel];
-                    }
-                    if (maxSize < count)
-                        maxSize = count;
-                }
-            }
+            // for (let v of Object.keys(this.delBids)) {
+            //     if (Number(v) >= currentPriceStart) {
+            //         const prLevel: number = this.yLevels - 1 - Math.round((Number(v) - currentPriceStart)/priceLevel(store.market!));
+            //         let count: number = 0;
+            //         if (prLevel < 0) {
+            //             delBids[0] = (delBids[0] || 0) + this.delBids[Number(v)];
+            //             count = delBids[0];
+            //         } else {
+            //             delBids[prLevel] = (delBids[prLevel] || 0) + this.delBids[Number(v)];
+            //             count = delBids[prLevel];
+            //         }
+            //         if (maxSize < count)
+            //             maxSize = count;
+            //     }
+            // }
 
             const layerAsks = this.layerAsksRef.current;
+            // tick metric
+            layerAsks.add(new Konva.Rect({
+                x: (10 + Math.round(ts*(this.countPixels+1)) - 1),
+                y: this.yHeightMetric,
+                width: 1,
+                height: (this.heightCanvas - this.yHeightMetric),
+                fill: 'black',
+                opacity: 0.03
+            }));
+            // metric
             for (let v in asks) { // @ts-ignore
                 layerAsks.add(new Konva.Rect({
                     x: (10 + Math.round(ts*(this.countPixels+1))),
@@ -165,17 +175,28 @@ class HeatMap extends React.Component<any, any> {
                     opacity: Math.round((asks[v]/maxSize)*100)/100
                 }));
             }
-            for (let v in delAsks) { // @ts-ignore
-                layerAsks.add(new Konva.Rect({
-                    x: (10 + Math.round(ts*(this.countPixels+1))),
-                    y: (this.yHeightMetric + Math.round(Number(v)*(this.countPixels+1))),
-                    width: this.countPixels,
-                    height: this.countPixels,
-                    fill: 'blue',
-                    opacity: Math.round((delAsks[v]/maxSize)*100)/100
-                }));
-            }
+            // delete metric
+            // for (let v in delAsks) { // @ts-ignore
+            //     layerAsks.add(new Konva.Rect({
+            //         x: (10 + Math.round(ts*(this.countPixels+1))),
+            //         y: (this.yHeightMetric + Math.round(Number(v)*(this.countPixels+1))),
+            //         width: this.countPixels,
+            //         height: this.countPixels,
+            //         fill: 'blue',
+            //         opacity: Math.round((delAsks[v]/maxSize)*100)/100
+            //     }));
+            // }
             const layerBids = this.layerBidsRef.current;
+            // tick metric
+            layerBids.add(new Konva.Rect({
+                x: (10 + Math.round(ts*(this.countPixels+1)) - 1),
+                y: this.yHeightMetric,
+                width: 1,
+                height: (this.heightCanvas - this.yHeightMetric),
+                fill: 'black',
+                opacity: 0.03
+            }));
+            // metric
             for (let v in bids) { // @ts-ignore
                 layerBids.add(new Konva.Rect({
                     x: (10 + Math.round(ts*(this.countPixels+1))),
@@ -186,16 +207,17 @@ class HeatMap extends React.Component<any, any> {
                     opacity: Math.round((bids[v]/maxSize)*100)/100
                 }));
             }
-            for (let v in delBids) { // @ts-ignore
-                layerBids.add(new Konva.Rect({
-                    x: (10 + Math.round(ts*(this.countPixels+1))),
-                    y: (this.yHeightMetric + Math.round(Number(v)*(this.countPixels+1))),
-                    width: this.countPixels,
-                    height: this.countPixels,
-                    fill: 'blue',
-                    opacity: Math.round((delBids[v]/maxSize)*100)/100
-                }));
-            }
+            // delete metric
+            // for (let v in delBids) { // @ts-ignore
+            //     layerBids.add(new Konva.Rect({
+            //         x: (10 + Math.round(ts*(this.countPixels+1))),
+            //         y: (this.yHeightMetric + Math.round(Number(v)*(this.countPixels+1))),
+            //         width: this.countPixels,
+            //         height: this.countPixels,
+            //         fill: 'blue',
+            //         opacity: Math.round((delBids[v]/maxSize)*100)/100
+            //     }));
+            // }
 
             this.delAsks = {};
             this.delBids = {};
@@ -294,7 +316,7 @@ class HeatMap extends React.Component<any, any> {
                     ret.push(
                         <Rect
                             key={`${i}rect`}
-                            x={(10 + (offset*(this.countPixels+1)) + (i*(this.countPixels+1)))}
+                            x={(10 + (offset*(this.countPixels+1)) + (i*(this.countPixels+1)) - 1)}
                             y={0}
                             width={1}
                             height={this.heightCanvas}
